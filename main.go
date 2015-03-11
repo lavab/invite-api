@@ -5,6 +5,7 @@ import (
 
 	r "github.com/dancannon/gorethink"
 	"github.com/lavab/flag"
+	"github.com/rs/cors"
 	"github.com/zenazn/goji"
 )
 
@@ -39,6 +40,11 @@ func main() {
 	r.Db(*rethinkName).Table("invites").IndexCreate("name").Exec(session)
 	r.Db(*rethinkName).TableCreate("users").Exec(session)
 	r.Db(*rethinkName).Table("users").IndexCreate("name").Exec(session)
+
+	// Add a CORS middleware
+	goji.Use(cors.New(cors.Options{
+		AllowCredentials: true,
+	}).Handler)
 
 	// Add routes to goji
 	goji.Get("/", index)
