@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	r "github.com/dancannon/gorethink"
+	"github.com/lavab/api/models"
 )
 
 type checkInput struct {
@@ -48,10 +49,35 @@ func check(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Respond using the invite
-	writeJSON(w, checkMsg{
+	resp := checkMsg{
 		Success: true,
-		Name:    invite.Name,
-		Email:   invite.Email,
-	})
+	}
+
+	// If AccountID is set, then fetch the account from the database
+	if invite.AccountID != "" {
+		cursor, err = r.Db(*rethinkAPIName).Table("accounts").Get(invite.AccountID).Run(session)
+		if err != nil {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: err.Error(),
+			})
+			return
+		}
+		var account *models.Account
+		err = cursor.One(&account)
+		if err != nil {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		// And put the result in the response
+		resp.Email = account.AltEmail
+		resp.Name = account.Name
+	}
+
+	// Respond using the invite
+	writeJSON(w, resp)
 }
