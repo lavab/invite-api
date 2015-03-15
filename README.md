@@ -19,8 +19,8 @@ An invitation token is a document in `invites` table of the database defined by
 `rethinkdb_name`. If the invitation doesn't contain an `account_id` field, then
 user is able to create an account with any free username / unused email. If the
 `account_id` is set, then `name` and `alt_email` of that account will be
-enforced on the user. After consuming a token, it will be removed by the
-backend of the setup wizard.
+enforced on the user. After consuming, the token will be removed by the backend
+of the setup wizard.
 
 ## Creating a new invitation
 
