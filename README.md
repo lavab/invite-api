@@ -1,6 +1,6 @@
 # invite-api
 
-<img src="https://mail.lavaboom.com/img/Lavaboom-logo.svg" align="right" width="300px" />
+<img src="https://mail.lavaboom.com/img/Lavaboom-logo.svg" align="right" width="200px" />
 
 Golang API of the Lavaboom's invitation app.
 
@@ -28,7 +28,7 @@ Unfortunately a tool for generating invites is not ready to be opensourced, so
 in order to create a new token, you need to insert a document into the
 `invites` table. Example:
 
-```json
+```javascript
 {
     "id": "1q2w3e4r5t6y7u8i9o0p",         // 20 characters-long token
     "account_id": "qawsedrftgyhujikolp0", // ID of the account of lavab/api
