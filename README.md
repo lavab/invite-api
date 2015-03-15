@@ -18,9 +18,10 @@ being compatible with the existing account setup wizard.
 An invitation token is a document in `invites` table of the database defined by
 `rethinkdb_name`. If the invitation doesn't contain an `account_id` field, then
 user is able to create an account with any free username / unused email. If the
-`account_id` is set, then `name` and `alt_email` of that account will be
-enforced on the user. After consuming, the token will be removed by the backend
-of the setup wizard.
+`account_id` is set, then `name` and `alt_email` of that account (fetched from
+the database defined by the `rethinkdb_api_name` flag) will be enforced on the
+user. After consuming, the token will be removed by the backend of the setup
+wizard.
 
 ## Creating a new invitation
 
@@ -31,7 +32,7 @@ in order to create a new token, you need to insert a document into the
 ```javascript
 {
     "id": "1q2w3e4r5t6y7u8i9o0p",         // 20 characters-long token
-    "account_id": "qawsedrftgyhujikolp0", // ID of the account of lavab/api
+    "account_id": "qawsedrftgyhujikolp0", // ID of the account in lavab/api
     "created_at": r.now()
 }
 ```
