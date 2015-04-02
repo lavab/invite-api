@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/asaskevich/govalidator"
 	r "github.com/dancannon/gorethink"
+	"github.com/dchest/uniuri"
 	"github.com/lavab/api/models"
 	"github.com/lavab/api/utils"
 )
@@ -207,6 +209,60 @@ func create(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
+
+	// Here be dragons. Thou art forewarned.
+	go func() {
+		// Watch the changes
+		cursor, err := r.Db(*rethinkAPIName).Table("accounts").Get(account.ID).Changes().Run(session)
+		if err != nil {
+			log.Print("Error while watching changes of user " + account.Name + " - " + err.Error())
+			return
+		}
+		defer cursor.Close()
+
+		// Generate a timeout "flag"
+		ts := uniuri.New()
+
+		// Read them
+		c := make(chan struct{})
+		go func() {
+			var change struct {
+				NewValue map[string]interface{} `gorethink:"new_val"`
+			}
+			for cursor.Next(&change) {
+				if status, ok := change.NewValue["status"]; ok {
+					if x, ok := status.(string); ok && x == "setup" {
+						c <- struct{}{}
+						return
+					}
+				}
+
+				if iat, ok := change.NewValue["_invite_api_timeout"]; ok {
+					if x, ok := iat.(string); ok && x == ts {
+						log.Print("Account setup watcher timeout for name " + account.Name)
+						return
+					}
+				}
+			}
+		}()
+
+		// Block the goroutine
+		select {
+		case <-c:
+			if err := r.Db(*rethinkName).Table("invites").Get(invite.ID).Delete().Exec(session); err != nil {
+				log.Print("Unable to delete an invite. " + invite.ID + " - " + account.ID)
+				return
+			}
+			return
+		case <-time.After(12 * time.Hour):
+			if err := r.Db(*rethinkAPIName).Table("accounts").Get(account.ID).Update(map[string]interface{}{
+				"_invite_api_timeout": ts,
+			}).Exec(session); err != nil {
+				log.Print("Failed to make a goroutine timeout. " + account.ID)
+			}
+			return
+		}
+	}()
 
 	// Return the token
 	writeJSON(w, createMsg{
