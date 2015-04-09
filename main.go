@@ -111,6 +111,7 @@ func main() {
 	// Add routes to goji
 	goji.Get("/", index)
 	goji.Post("/check", check)
+	goji.Post("/free", free)
 	goji.Post("/create", create)
 
 	// Start the server

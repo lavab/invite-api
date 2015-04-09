@@ -6,9 +6,8 @@ import (
 
 type Invite struct {
 	ID        string    `gorethink:"id"`
-	Name      string    `gorethink:"name,omitempty"`
-	Email     string    `gorethink:"email"`
 	Source    string    `gorethink:"source"`
-	CreatedBy string    `gorethink:"created_by"` // maps to user:id
+	AccountID string    `gorethink:"account_id,omitempty"` // maps to api.account:id
+	CreatedBy string    `gorethink:"created_by,omitempty"` // maps to user:id
 	CreatedAt time.Time `gorethink:"created_at"`
 }
