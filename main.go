@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	r "github.com/dancannon/gorethink"
-	"github.com/lavab/flag"
+	"github.com/lavab/goji"
 	"github.com/lavab/kiri"
+	"github.com/namsral/flag"
 	"github.com/rs/cors"
-	"github.com/zenazn/goji"
 )
 
 var (
@@ -89,6 +89,10 @@ func main() {
 		session, err = r.Connect(r.ConnectOpts{
 			Address: service.Address,
 		})
+		if err != nil {
+			log.Print(err)
+		}
+
 		return err
 	}))
 	if err != nil {
