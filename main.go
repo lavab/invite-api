@@ -12,9 +12,7 @@ import (
 )
 
 var (
-	rethinkAddress = flag.String("rethinkdb_address", "127.0.0.1:28015", "Address of the RethinkDB server")
 	rethinkName    = flag.String("rethinkdb_name", "invite", "Name of the invitation app's database")
-	rethinkKey     = flag.String("rethinkdb_key", "", "Key of the RethinkDB connection")
 	rethinkAPIName = flag.String("rethinkdb_api_name", "prod", "Name of the API's database")
 
 	kiriAddresses = flag.String("kiri_addresses", "", "Addresses of the etcd servers to use")
