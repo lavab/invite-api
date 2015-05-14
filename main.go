@@ -5,7 +5,6 @@ import (
 
 	r "github.com/dancannon/gorethink"
 	"github.com/lavab/goji"
-	"github.com/lavab/goji/web"
 	"github.com/namsral/flag"
 	"github.com/rs/cors"
 )
@@ -37,28 +36,17 @@ func main() {
 	r.Db(*rethinkName).TableCreate("invites").Exec(session)
 	r.Db(*rethinkName).Table("invites").IndexCreate("email").Exec(session)
 	r.Db(*rethinkName).Table("invites").IndexCreate("name").Exec(session)
-	r.Db(*rethinkName).TableCreate("users").Exec(session)
-	r.Db(*rethinkName).Table("users").IndexCreate("name").Exec(session)
 
 	// Add a CORS middleware
 	goji.Use(cors.New(cors.Options{
 		AllowCredentials: true,
 	}).Handler)
 
-	// Add an auth'd mux
-	auth := web.New()
-	auth.Use(middleware)
-
 	// Add routes to goji
 	goji.Get("/", index)
 	goji.Post("/check", check)
 	goji.Post("/free", free)
 	goji.Post("/create", create)
-	goji.Post("/auth", auth)
-	auth.Get("/info", info)
-
-	// Merge the muxes
-	goji.Handle("/*", auth)
 
 	// Start the server
 	goji.Serve()
