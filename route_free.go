@@ -93,6 +93,34 @@ func free(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Check if address is used
+	cursor, err = r.Db(*rethinkAPIName).Table("addresses").
+		GetAll(msg.Username).
+		Filter(r.Row.Field("owner").Ne(r.Expr(invite.AccountID))).
+		Count().Run(session)
+	if err != nil {
+		writeJSON(w, errorMsg{
+			Success: false,
+			Message: err.Error(),
+		})
+		return
+	}
+	err = cursor.One(&usernameCount)
+	if err != nil {
+		writeJSON(w, errorMsg{
+			Success: false,
+			Message: err.Error(),
+		})
+		return
+	}
+	if usernameCount > 0 {
+		writeJSON(w, freeMsg{
+			Success:       false,
+			UsernameTaken: true,
+		})
+		return
+	}
+
 	// Check if email is used
 	cursor, err = r.Db(*rethinkAPIName).Table("accounts").
 		GetAllByIndex("alt_email", msg.Email).
