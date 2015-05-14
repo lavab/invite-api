@@ -8,7 +8,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	r "github.com/dancannon/gorethink"
-	"github.com/dchest/uniuri"
+	//"github.com/dchest/uniuri"
 	"github.com/lavab/api/models"
 	"github.com/lavab/api/utils"
 )
@@ -56,6 +56,7 @@ func create(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Normalize the username
+	styledName := msg.Username
 	msg.Username = utils.RemoveDots(utils.NormalizeUsername(msg.Username))
 
 	// Validate the email
@@ -161,10 +162,11 @@ func create(w http.ResponseWriter, req *http.Request) {
 	} else {
 		// Prepare a new account
 		account = &models.Account{
-			Resource: models.MakeResource("", msg.Username),
-			AltEmail: msg.Email,
-			Status:   "registered",
-			Type:     "beta",
+			Resource:   models.MakeResource("", msg.Username),
+			AltEmail:   msg.Email,
+			StyledName: styledName,
+			Status:     "registered",
+			Type:       "supporter",
 		}
 
 		// Update the invite
@@ -211,7 +213,7 @@ func create(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Here be dragons. Thou art forewarned.
-	go func() {
+	/*go func() {
 		// Watch the changes
 		cursor, err := r.Db(*rethinkAPIName).Table("accounts").Get(account.ID).Changes().Run(session)
 		if err != nil {
@@ -262,7 +264,13 @@ func create(w http.ResponseWriter, req *http.Request) {
 			}
 			return
 		}
-	}()
+	}()*/
+
+	// jk fuck that
+	if err := r.Db(*rethinkName).Table("invites").Get(invite.ID).Delete().Exec(session); err != nil {
+		log.Print("Unable to delete an invite. " + invite.ID + " - " + account.ID)
+		return
+	}
 
 	// Return the token
 	writeJSON(w, createMsg{
