@@ -6,6 +6,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	r "github.com/dancannon/gorethink"
+	"github.com/lavab/api/models"
 	"github.com/lavab/api/utils"
 )
 
@@ -55,103 +56,144 @@ func free(w http.ResponseWriter, req *http.Request) {
 	// Normalize the username - make it lowercase and remove dots
 	msg.Username = utils.RemoveDots(utils.NormalizeUsername(msg.Username))
 
-	// Validate the email
-	if !govalidator.IsEmail(msg.Email) {
-		writeJSON(w, errorMsg{
-			Success: false,
-			Message: "Invalid email address",
-		})
-		return
-	}
+	if invite.AccountID != "" {
+		// Fetch account from database
+		cursor, err := r.Db(*rethinkAPIName).Table("accounts").Get(invite.AccountID).Run(session)
+		if err != nil {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: err.Error(),
+			})
+			return
+		}
+		var account *models.Account
+		if err := cursor.One(&account); err != nil {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: err.Error(),
+			})
+			return
+		}
+		if account.Name != "" && account.Name != msg.Username {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: "Invalid username",
+			})
+			return
+		}
 
-	// Check if username is taken
-	cursor, err = r.Db(*rethinkAPIName).Table("accounts").
-		GetAllByIndex("name", msg.Username).
-		Filter(r.Row.Field("id").Ne(r.Expr(invite.AccountID))).
-		Count().Run(session)
-	if err != nil {
-		writeJSON(w, errorMsg{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
-	var usernameCount int
-	err = cursor.One(&usernameCount)
-	if err != nil {
-		writeJSON(w, errorMsg{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
-	if usernameCount > 0 {
+		if account.AltEmail != "" && account.AltEmail != msg.Email {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: "Invalid email",
+			})
+			return
+		}
+
+		if account.AltEmail == "" && !govalidator.IsEmail(msg.Email) {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: "Invalid email address",
+			})
+			return
+		}
+
+		if account.Name == "" {
+			// Check if address is taken
+			cursor, err = r.Db(*rethinkAPIName).Table("addresses").Get(msg.Username).Run(session)
+			if err == nil || cursor != nil {
+				writeJSON(w, freeMsg{
+					Success:       false,
+					UsernameTaken: true,
+				})
+				return
+			}
+		}
+
+		if account.AltEmail == "" {
+			// Check if email is used
+			cursor, err = r.Db(*rethinkAPIName).Table("accounts").
+				GetAllByIndex("alt_email", msg.Email).Count().Run(session)
+			if err != nil {
+				writeJSON(w, errorMsg{
+					Success: false,
+					Message: err.Error(),
+				})
+				return
+			}
+			var emailCount int
+			err = cursor.One(&emailCount)
+			if err != nil {
+				writeJSON(w, errorMsg{
+					Success: false,
+					Message: err.Error(),
+				})
+				return
+			}
+			if emailCount > 0 {
+				writeJSON(w, freeMsg{
+					Success:   false,
+					EmailUsed: true,
+				})
+				return
+			}
+		}
+
+		// Return the result
 		writeJSON(w, freeMsg{
-			Success:       false,
-			UsernameTaken: true,
+			Success: true,
 		})
-		return
-	}
+	} else {
+		if !govalidator.IsEmail(msg.Email) {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: "Invalid email address",
+			})
+			return
+		}
 
-	// Check if address is used
-	cursor, err = r.Db(*rethinkAPIName).Table("addresses").
-		GetAll(msg.Username).
-		Filter(r.Row.Field("owner").Ne(r.Expr(invite.AccountID))).
-		Count().Run(session)
-	if err != nil {
-		writeJSON(w, errorMsg{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
-	err = cursor.One(&usernameCount)
-	if err != nil {
-		writeJSON(w, errorMsg{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
-	if usernameCount > 0 {
+		// Check if address is taken
+		cursor, err = r.Db(*rethinkAPIName).Table("addresses").Get(msg.Username).Run(session)
+		if err == nil || cursor != nil {
+			writeJSON(w, freeMsg{
+				Success:       false,
+				UsernameTaken: true,
+			})
+			return
+		}
+
+		// Check if email is used
+		cursor, err = r.Db(*rethinkAPIName).Table("accounts").
+			GetAllByIndex("alt_email", msg.Email).
+			Filter(r.Row.Field("id").Ne(r.Expr(invite.AccountID))).
+			Count().Run(session)
+		if err != nil {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: err.Error(),
+			})
+			return
+		}
+		var emailCount int
+		err = cursor.One(&emailCount)
+		if err != nil {
+			writeJSON(w, errorMsg{
+				Success: false,
+				Message: err.Error(),
+			})
+			return
+		}
+		if emailCount > 0 {
+			writeJSON(w, freeMsg{
+				Success:   false,
+				EmailUsed: true,
+			})
+			return
+		}
+
+		// Return the result
 		writeJSON(w, freeMsg{
-			Success:       false,
-			UsernameTaken: true,
+			Success: true,
 		})
-		return
 	}
-
-	// Check if email is used
-	cursor, err = r.Db(*rethinkAPIName).Table("accounts").
-		GetAllByIndex("alt_email", msg.Email).
-		Filter(r.Row.Field("id").Ne(r.Expr(invite.AccountID))).
-		Count().Run(session)
-	if err != nil {
-		writeJSON(w, errorMsg{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
-	var emailCount int
-	err = cursor.One(&emailCount)
-	if err != nil {
-		writeJSON(w, errorMsg{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
-	if emailCount > 0 {
-		writeJSON(w, freeMsg{
-			Success:   false,
-			EmailUsed: true,
-		})
-		return
-	}
-
-	// Return the result
-	writeJSON(w, freeMsg{
-		Success: true,
-	})
 }
